@@ -1,9 +1,10 @@
 package dev.jasoncao.customer;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 @Service
-public record CustomerService(CustomerRepository customerRepository) {
+public record CustomerService(CustomerRepository customerRepository, RestTemplate restTemplate) {
     public void registerCustomer(CustomerRegistrationRequest customerRegistrationRequest) {
         Customer customer = Customer.builder()
             .firstName(customerRegistrationRequest.firstName())
@@ -12,8 +13,15 @@ public record CustomerService(CustomerRepository customerRepository) {
             .build();
         // TODO: Check if email valid
         // TODO: Check if email is already registered
-        // TODO: Save customer to database
-        customerRepository.save(customer);
+        customerRepository.saveAndFlush(customer);
+        FraudCheckResponse fraudCheckResponse = restTemplate.getForObject(
+                "http://FRAUD/api/v1/fraud-check/{customerId}",
+                FraudCheckResponse.class,
+                customer.getId());
+        assert fraudCheckResponse != null;
+        if (fraudCheckResponse.isFraudster()) {
+            throw new IllegalStateException("Customer is a fraud!");
+        }
     }
 
     public Customer getCustomerById(Integer id) {
