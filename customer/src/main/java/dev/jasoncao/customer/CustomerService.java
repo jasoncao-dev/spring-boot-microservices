@@ -15,4 +15,8 @@ public record CustomerService(CustomerRepository customerRepository) {
         // TODO: Save customer to database
         customerRepository.save(customer);
     }
+
+    public Customer getCustomerById(Integer id) {
+        return customerRepository.findById(id).orElseThrow();
+    }
 }
