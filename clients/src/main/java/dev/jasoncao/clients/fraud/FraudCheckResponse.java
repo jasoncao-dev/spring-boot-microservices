@@ -1,4 +1,4 @@
-package dev.jasoncao.fraud;
+package dev.jasoncao.clients.fraud;
 
 public record FraudCheckResponse(boolean isFraudster) {
 }
