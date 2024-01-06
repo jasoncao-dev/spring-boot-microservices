@@ -26,15 +26,95 @@ services:
       - "5050:80"
     networks:
       - postgres
+      - spring
     restart: unless-stopped
   zipkin:
     image: openzipkin/zipkin
     container_name: zipkin
+    networks:
+      - spring
     ports:
       - "9411:9411"
-
+  rabbitmq:
+    image: rabbitmq:3.9.11-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - spring
+  eureka-server:
+    image: jasoncaodev/eureka-server:latest
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - spring.profiles.active=docker
+    networks:
+      - spring
+    depends_on:
+      - zipkin
+  apigw:
+    image: jasoncaodev/apigw:latest
+    container_name: apigw
+    ports:
+      - "8083:8083"
+    environment:
+      - spring.profiles.active=docker
+    networks:
+      - spring
+    depends_on:
+      - zipkin
+      - eureka-server
+  customer:
+    image: jasoncaodev/customer:latest
+    container_name: customer
+    ports:
+      - "8080:8080"
+    environment:
+      - spring.profiles.active=docker
+    networks:
+      - spring
+      - postgres
+    depends_on:
+      - postgres
+      - zipkin
+      - eureka-server
+      - rabbitmq
+  fraud:
+    image: jasoncaodev/fraud:latest
+    container_name: fraud
+    ports:
+      - "8081:8081"
+    environment:
+      - spring.profiles.active=docker
+    networks:
+      - spring
+      - postgres
+    depends_on:
+      - postgres
+      - zipkin
+      - eureka-server
+      - rabbitmq
+  notification:
+    image: jasoncaodev/notification:latest
+    container_name: notification
+    ports:
+      - "8082:8082"
+    environment:
+      - spring.profiles.active=docker
+    networks:
+      - spring
+      - postgres
+    depends_on:
+      - postgres
+      - zipkin
+      - eureka-server
+      - rabbitmq
 networks:
   postgres:
+    driver: bridge
+  spring:
     driver: bridge
 
 volumes:
