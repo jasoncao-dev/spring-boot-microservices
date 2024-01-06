@@ -1,5 +1,6 @@
 package dev.jasoncao.customer;
 
+import dev.jasoncao.amqp.RabbitMQMessageProducer;
 import dev.jasoncao.clients.fraud.FraudCheckResponse;
 import dev.jasoncao.clients.fraud.FraudClient;
 import dev.jasoncao.clients.notification.NotificationClient;
@@ -11,7 +12,7 @@ import org.springframework.web.client.RestTemplate;
 public record CustomerService(CustomerRepository customerRepository,
                               RestTemplate restTemplate,
                               FraudClient fraudClient,
-                              NotificationClient notificationClient) {
+                              RabbitMQMessageProducer rabbitMQMessageProducer) {
     public void registerCustomer(CustomerRegistrationRequest customerRegistrationRequest) {
         Customer customer = Customer.builder()
             .firstName(customerRegistrationRequest.firstName())
@@ -27,12 +28,12 @@ public record CustomerService(CustomerRepository customerRepository,
         if (fraudCheckResponse.isFraudster()) {
             throw new IllegalStateException("Customer is a fraud!");
         }
-        notificationClient.sendNotification(
-                NotificationRequest.builder()
+        NotificationRequest notificationClient = NotificationRequest.builder()
                         .toCustomerId(customer.getId())
                         .toCustomerEmail(customer.getEmail())
-                        .message("Welcome to our service!")
-                        .build());
+                        .message(String.format("Hi %s %s!, welcome to jasoncao.dev", customer.getFirstName(), customer.getLastName()))
+                        .build();
+        rabbitMQMessageProducer.publish(notificationClient, "internal.exchange", "internal.notification.routing-key");
     }
 
     public Customer getCustomerById(Integer id) {
